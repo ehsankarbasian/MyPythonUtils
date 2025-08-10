@@ -7,8 +7,6 @@ sys.path.append(path)
 from utils.flexible_dict.flexible_dict import FlexibleDict
 
 
-# TODO: write test
-
 a = {'a': 'a',
      'c': 30,
      'b': 'b',
@@ -47,12 +45,21 @@ print(b['cdefg'].flexible_value.value)
 print(type(b['cdefg'].flexible_value.value))
 print(b['cdefg'].value)
 print(type(b['cdefg'].value))
+
+
+print(b['cdefg'])
 b['cdefg'] = {'f': 'f', 'g': 'g'}
+print(b['cdefg'])
+
 print(b['cdefg'].value)
 print(type(b['cdefg'].value))
 print(b['a'].iterable_value)
 print(b['c'].iterable_value)
-print(b['cdefg'].value['f'])
 b['cdefg'].value['f'] = 'new'
-print(b['cdefg'].value['f'].value)
-print(b['cdefg'].value['f'].value.value)
+print(b['cdefg']['f'].value)
+b['cdefg']['f'].value = 'new'
+print(b['cdefg']['f'].value)
+
+b['cdefg']['f'] = 'new'
+print(b['cdefg']['f'])
+print(b['cdefg']['f'].value)

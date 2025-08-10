@@ -32,7 +32,7 @@ class _SubscriptableDefault(object):
         return _SubscriptableDefault(default=self.value, iterable_default=self.__iterable_default)
     
     def __str__(self):
-        return self.value
+        return f'\nType: {type(self)} \nValue: {self.value}\n'
 
 
 class FlexibleDict(dict):
@@ -47,10 +47,10 @@ class FlexibleDict(dict):
     
     
     def __load_dict(self, input_dict):
-        is_input_dict = bool(str(type(input_dict)) == "<class 'dict'>")
+        is_input_dict = isinstance(input_dict, dict)
         if is_input_dict:
             for key, value in input_dict.items():
-                dict.__setitem__(self, key, value)
+                super(FlexibleDict, self).__setitem__(key, value)
         return self
     
     def __setitem__(self, key, value):
@@ -61,14 +61,18 @@ class FlexibleDict(dict):
         if __key not in self.keys():
             self.__value = _SubscriptableDefault(default=self.__default, iterable_default=self.__iterable_default)
         else:
-            inline_value = super().__getitem__(__key)
+            inline_value = super(FlexibleDict, self).__getitem__(__key)
             self.__value = self.__generate_flexible_value(inline_value)
         return self.__value
     
     def __generate_flexible_value(self, inline_value):
-        is_inline_value_dict = bool(str(type(inline_value)) == "<class 'dict'>")
+        is_inline_value_dict = isinstance(inline_value, dict)
+        is_inline_value_flexible_dict = isinstance(inline_value, FlexibleDict)
+        is_inline_value_subscriptable_default = isinstance(inline_value, _SubscriptableDefault)
         
-        if is_inline_value_dict:
+        if is_inline_value_flexible_dict or is_inline_value_subscriptable_default:
+            flexible_value = inline_value
+        elif is_inline_value_dict:
             flexible_value = FlexibleDict(input_dict=inline_value, default=self.__default, iterable_default=self.__iterable_default)
         else:
             flexible_value = _SubscriptableDefault(default=inline_value, next_level_default=self.__default, iterable_default=self.__iterable_default)
@@ -96,4 +100,4 @@ class FlexibleDict(dict):
         return self.__value
     
     def __str__(self):
-        return dict.__str__(self)
+        return f'\nType: {type(self)} \nValue: {dict.__str__(self)}\n'

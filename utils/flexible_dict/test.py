@@ -9,30 +9,34 @@ sys.path.append(path)
 from utils.flexible_dict.flexible_dict import FlexibleDict, _SubscriptableDefault
 
 
+INITIAL_DICT = {'a': 'a',
+                'c': 30,
+                'b': 'b',
+                'cdefg': {
+                    'c': 'c',
+                    'defg': {
+                        'd': 'd',
+                        'efg':{
+                            'e': 'e',
+                            'fg': {'f': 'f', 'g': 'g'}
+                            }
+                        }
+                    },
+                }
+
+
 class FlexibleDictBehaviourTestCase(TestCase):
+    MY_NONE = '__MY_NONE__'
+    MY_ITERABLE_DEFAULT = '__MY_ITERABLE_DEFAULT__'
     
     def setUp(self):
-        default_dict = {'a': 'a',
-                        'c': 30,
-                        'b': 'b',
-                        'cdefg': {
-                            'c': 'c',
-                            'defg': {
-                                'd': 'd',
-                                'efg':{
-                                    'e': 'e',
-                                    'fg': {'f': 'f', 'g': 'g'}
-                                    }
-                                }
-                            },
-                        }
-        self.flexible_dict = FlexibleDict(input_dict=default_dict,
-                                          default='__MY_NONE__',
-                                          iterable_default='__MY_ITERABLE_DEFAULT__')
+        self.flexible_dict = FlexibleDict(input_dict=INITIAL_DICT,
+                                          default=self.MY_NONE,
+                                          iterable_default=self.MY_ITERABLE_DEFAULT)
     
     
     def tearDown(self):
-        return super().tearDown()
+        pass
     
     def test_simple_access_level_1(self):
         self.assertEqual(self.flexible_dict['a'].value, 'a')
@@ -57,49 +61,37 @@ class FlexibleDictBehaviourTestCase(TestCase):
         pass
     
     def test_not_exists_access_level_1(self):
-        self.assertEqual(self.flexible_dict['d'].value, '__MY_NONE__')
+        self.assertEqual(self.flexible_dict['d'].value, self.MY_NONE)
     
     def test_not_exists_access_level_2(self):
-        self.assertEqual(self.flexible_dict['b']['c'].value, '__MY_NONE__')
+        self.assertEqual(self.flexible_dict['b']['c'].value, self.MY_NONE)
     
     def test_not_exists_access_level_3(self):
-        self.assertEqual(self.flexible_dict['b']['c']['k'].value, '__MY_NONE__')
-        self.assertEqual(self.flexible_dict['cdefg']['defg']['kk'].value, '__MY_NONE__')
+        self.assertEqual(self.flexible_dict['b']['c']['k'].value, self.MY_NONE)
+        self.assertEqual(self.flexible_dict['cdefg']['defg']['kk'].value, self.MY_NONE)
     
     def test_not_exists_access_level_4(self):
-        self.assertEqual(self.flexible_dict['cdefg']['defg']['kk']['hh'].value, '__MY_NONE__')
+        self.assertEqual(self.flexible_dict['cdefg']['defg']['kk']['hh'].value, self.MY_NONE)
         
     def test_not_exists_access_level_5(self):
-        self.assertEqual(self.flexible_dict['cdefg']['defg']['efg']['fg']['k'].value, '__MY_NONE__')
+        self.assertEqual(self.flexible_dict['cdefg']['defg']['efg']['fg']['k'].value, self.MY_NONE)
         
     def test_not_exists_access_level_6(self):
-        self.assertEqual(self.flexible_dict['cdefg']['defg']['efg']['fg']['g']['k'].value, '__MY_NONE__')
+        self.assertEqual(self.flexible_dict['cdefg']['defg']['efg']['fg']['g']['k'].value, self.MY_NONE)
 
 
 class FlexibleDictStructureTestCase(TestCase):
+    MY_NONE = '__MY_NONE__'
+    MY_ITERABLE_DEFAULT = '__MY_ITERABLE_DEFAULT__'
     
     def setUp(self):
-        default_dict = {'a': 'a',
-                        'c': 30,
-                        'b': 'b',
-                        'cdefg': {
-                            'c': 'c',
-                            'defg': {
-                                'd': 'd',
-                                'efg':{
-                                    'e': 'e',
-                                    'fg': {'f': 'f', 'g': 'g'}
-                                    }
-                                }
-                            },
-                        }
-        self.flexible_dict = FlexibleDict(input_dict=default_dict,
-                                          default='__MY_NONE__',
-                                          iterable_default='__MY_ITERABLE_DEFAULT__')
+        self.flexible_dict = FlexibleDict(input_dict=INITIAL_DICT,
+                                          default=self.MY_NONE,
+                                          iterable_default=self.MY_ITERABLE_DEFAULT)
     
     
     def tearDown(self):
-        return super().tearDown()
+        pass
     
     def test_final_value_type(self):
         self.assertIsInstance(self.flexible_dict['a'].value, str)
@@ -141,7 +133,7 @@ class FlexibleDictStructureTestCase(TestCase):
         self.assertEqual(final_value, final_value_with_flexible_in_middle)
     
     def test_final_value_type_after_setitem(self):
-        self.flexible_dict['cdefg'] = {'f': 'f', 'g': 'g'}
+        self.flexible_dict['cdefg'] = {'f': 'f_val', 'g': 'g_val'}
         self.assertIsInstance(self.flexible_dict['cdefg'], dict)
         self.assertIsInstance(self.flexible_dict['cdefg'], FlexibleDict)
         
@@ -159,30 +151,33 @@ class FlexibleDictStructureTestCase(TestCase):
         self.assertIsInstance(self.flexible_dict['cdefg']['f'].flexible_value.value, str)
     
     def test_flexible_value_type_after_setitem(self):
-        self.flexible_dict['cdefg'] = {'f': 'f', 'g': 'g'}
+        self.flexible_dict['cdefg'] = {'f': 'f_val', 'g': 'g_val'}
         self.assertIsInstance(self.flexible_dict['cdefg'].flexible_value, FlexibleDict)
         self.assertIsInstance(self.flexible_dict['cdefg']['f'].flexible_value, _SubscriptableDefault)
         self.assertIsInstance(self.flexible_dict['cdefg']['f']['n'].flexible_value, _SubscriptableDefault)
     
     def test_item_setted_after_setitem_level_1(self):
-        item = {'f': 'f', 'g': 'g'}
+        item = {'f': 'f_val', 'g': 'g_val'}
         self.flexible_dict['cdefg'] = item
         self.assertEqual(self.flexible_dict['cdefg'].value, item)
         self.assertEqual(self.flexible_dict['cdefg'].flexible_value.value, item)
+        self.assertEqual(self.flexible_dict['cdefg']['g'].value, 'g_val')
     
     def test_item_setted_after_setitem_level_2(self):
-        item = {'f': 'f', 'g': 'g'}
+        item = {'f': 'f_val', 'g': 'g_val'}
         self.flexible_dict['cdefg'] = item
         self.flexible_dict['cdefg']['f'] = 'new'
         self.assertIsInstance(self.flexible_dict['cdefg']['f'], _SubscriptableDefault)
         self.assertEqual(self.flexible_dict['cdefg']['f'].value, 'new')
         self.assertEqual(self.flexible_dict['cdefg']['f'].flexible_value.value, 'new')
+        self.assertEqual(self.flexible_dict['cdefg']['g'].value, 'g_val')
     
     def test_flexible_relation_disconnection_after_call_dotvalue(self):
-        self.flexible_dict['cdefg'] = {'f': 'f', 'g': 'g'}
+        self.flexible_dict['cdefg'] = {'f': 'f_val', 'g': 'g_val'}
         self.flexible_dict['cdefg'].value['f'] = 'new'
         self.assertNotEqual(self.flexible_dict['cdefg']['f'].value, 'new')
-        self.assertEqual(self.flexible_dict['cdefg']['f'].value, 'f')
+        self.assertEqual(self.flexible_dict['cdefg']['f'].value, 'f_val')
+        self.assertEqual(self.flexible_dict['cdefg']['g'].value, 'g_val')
 
 
 if __name__=='__main__':

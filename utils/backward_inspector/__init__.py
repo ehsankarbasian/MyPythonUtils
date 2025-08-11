@@ -1,6 +1,6 @@
-from src.utils.backward_inspector.backward import get_caller_file_line
-from src.utils.backward_inspector.backward import get_caller_function_name
-from src.utils.backward_inspector.backward import get_caller_file_name
+from utils.backward_inspector.backward import get_caller_file_line
+from utils.backward_inspector.backward import get_caller_function_name
+from utils.backward_inspector.backward import get_caller_file_name
 
 
 class BackwardInspector:

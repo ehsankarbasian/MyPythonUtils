@@ -1,7 +1,4 @@
 
-#TODO: add how to use
-
-
 #REFACTOR: Use as separate module
 class LogCacher:
     

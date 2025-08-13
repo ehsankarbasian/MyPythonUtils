@@ -1,23 +1,4 @@
-
-#REFACTOR: Use as separate module
-class LogCacher:
-    
-    def __init__(self, prefix=None):
-        self._cache = []
-        self._prefix = prefix
-    
-    def cache_log(self, message):
-        if self._prefix:
-            message = f'{self._prefix} | {message}'
-        self._cache.append(message)
-    
-    # TODO: Strategy pattern
-    def print_all_cached_logs(self):
-        for line in self._cache:
-            print(line)
-    
-    def clear_cache(self):
-        self._cache = list()
+from utils.log_cacher.simple_cacher import SimpleLogCacher
 
 
 class NotifyDict(dict):
@@ -27,7 +8,7 @@ class NotifyDict(dict):
     
     def __init__(self, logfile_name, logger_pid, enable_default_value=False, default_value=None, *args, **kwargs):
         prefix = f'{logger_pid} | {logfile_name}'
-        self.__logCacher = LogCacher(prefix=prefix)
+        self.__logCacher = SimpleLogCacher(prefix=prefix) #Strategy pattern
         self.__enable_default_value = enable_default_value
         self.__default_value = default_value
         
@@ -53,7 +34,7 @@ class NotifyDict(dict):
         dict.__delitem__(self, key)
     
     def write_all_cached_logs(self):
-        self.__logCacher.print_all_cached_logs()
+        self.__logCacher.show_all_cached_logs()
     
     def clear_all_cached_logs(self):
         self.__logCacher.clear_cache()

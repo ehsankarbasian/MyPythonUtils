@@ -4,15 +4,14 @@ import copy
 
 class AbstractLogCacher(ABC):
     
-    def __init__(self, prefix=None):
+    def __init__(self):
         pass
     
-    @property
+    @classmethod
     @abstractmethod
-    def display_function(self):
+    def display_function(cls, text):
         pass
     
-    # TODO: Make it private
     @property
     @abstractmethod
     def iterable_cached_logs(self):
@@ -20,7 +19,11 @@ class AbstractLogCacher(ABC):
     
     @iterable_cached_logs.setter
     def iterable_cached_logs(self, value):
-        self.iterable_cached_logs = copy.copy(value)
+        self.__iterable_cached_logs = copy.copy(value)
+    
+    @iterable_cached_logs.getter
+    def iterable_cached_logs(self):
+        return self.__iterable_cached_logs
     
     @abstractmethod
     def cache_log(self, message):

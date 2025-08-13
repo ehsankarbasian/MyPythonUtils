@@ -1,10 +1,11 @@
+# pip install fakeredis
+
 import fakeredis
 from fakeredis import TcpFakeServer
 from threading import Thread
 
 
-def run_fake_server():
-    server_address = ("127.0.0.1", 6379)
+def run_fake_server(server_address):
     server = TcpFakeServer(server_address, server_type="redis")
     t = Thread(target=server.serve_forever, daemon=True)
     t.start()
@@ -17,4 +18,14 @@ def get_fake_client():
     return client
 
 
-# TODO Read more: https://fakeredis.readthedocs.io/en/latest/
+'''
+Use as a pytest fixture¶
+
+import pytest
+
+@pytest.fixture
+def redis_client(request):
+    import fakeredis
+    redis_client = fakeredis.FakeRedis()
+    return redis_client
+'''

@@ -7,10 +7,7 @@ class SimpleLogCacher(AbstractLogCacher):
     def __init__(self, prefix=None):
         self._cache = []
         self._prefix = prefix
-    
-    @property
-    def iterable_cached_logs(self):
-        return self.iterable_cached_logs
+        self.iterable_cached_logs = self._cache
     
     def cache_log(self, message):
         if self._prefix:

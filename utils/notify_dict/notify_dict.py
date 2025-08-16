@@ -33,21 +33,33 @@ class NotifyDict(dict):
         self.__logCacher.cache_log(message)
         dict.__delitem__(self, key)
     
-    def write_all_cached_logs(self):
+    def __write_all_cached_logs(self):
         self.__logCacher.show_all_cached_logs()
     
-    def clear_all_cached_logs(self):
+    def write_and_clear_cached_logs(self):
+        self.__write_all_cached_logs()
+        self.clear_cached_logs()
+    
+    def clear_cached_logs(self):
         self.__logCacher.clear_cache()
     
     def _wrap(method):
         def wrapper(self, *args, **kwargs):
             result = method(self, *args, **kwargs)
-            self.log_callback('a change !')
+            message = f'run dict.{method.__name__} | args: "{", ".join(args)}" | kwargs: "{", ".join(kwargs)}" | returned: {result}'
+            self.__logCacher.cache_log(message)
             return result
         return wrapper
     
-    clear = _wrap(dict.clear)
+    copy = _wrap(dict.copy)
+    keys = _wrap(dict.keys)
+    values = _wrap(dict.values)
+    items = _wrap(dict.items)
+    fromkeys = _wrap(dict.fromkeys)
+    get = _wrap(dict.get)
     pop = _wrap(dict.pop)
+    
+    clear = _wrap(dict.clear)
     popitem = _wrap(dict.popitem)
     setdefault = _wrap(dict.setdefault)
     update =  _wrap(dict.update)

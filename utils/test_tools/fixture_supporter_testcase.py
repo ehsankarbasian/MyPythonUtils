@@ -1,13 +1,17 @@
 from unittest import TestCase
+import unittest
 import glob
 
 import pathlib
 import sys
-path = str(pathlib.Path(__file__).parent.parent.parent.parent.absolute())
+path = str(pathlib.Path(__file__).parent.parent.parent.absolute())
 sys.path.append(path)
 
 from utils.test_tools.fixture_loaders.mongo_loader import mongoLoader
 
+
+# TODO: Read and Debug
+# TODO: Complete README
 
 class FixtureSupporterTestCase(TestCase):
     
@@ -67,3 +71,32 @@ class FixtureSupporterTestCase(TestCase):
         # file_address must be __file__ in any file uses this function
         directory_address = '/'.join(file_address.split('/')[:-1])
         return directory_address
+
+
+# TODO: Complete the how_to_use section
+
+def _add(a, b):
+    return a + b
+
+
+class AddTestCase(FixtureSupporterTestCase):
+    
+    def setUp(self):
+        return super().setUp()
+    
+    def tearDown(self):
+        return super().tearDown()
+    
+    def test_add_1(self):
+        self.assertEqual(_add(3, 7), 10)
+    
+    def test_add_2(self):
+        self.assertEqual(_add(3, -7), -4)
+    
+    # Use fixtures
+    def test_add_read_from_mongo(self):
+        pass
+
+
+if __name__=='__main__':
+    unittest.main()

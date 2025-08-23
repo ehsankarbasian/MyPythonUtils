@@ -6,7 +6,7 @@ path = str(pathlib.Path(__file__).parent.parent.parent.parent.absolute())
 sys.path.append(path)
 
 from utils.test_tools.fixture_loaders.abstract_loader import AbstractLoader
-from utils.test_tools.mocked_mongo import get_mongo_mocked_colletion
+from utils.test_tools.mocked_mongo.mocked_mongo import get_mongo_mocked_colletion
 
 
 class __MongoLoader(AbstractLoader):

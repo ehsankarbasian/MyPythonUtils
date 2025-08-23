@@ -7,7 +7,7 @@ class _PrivateFunctionCalledException(Exception):
 
 
 def __get_is_access_limit_met(func, args, caller_name, func_name, caller_file):
-    #TODO: Make sure has not bugs
+    #TODO: Make sure has not bugs, (write test if necessary)
     
     is_file_method = type(args[0]).__name__ == 'str'
     owner_file_name = func.__module__

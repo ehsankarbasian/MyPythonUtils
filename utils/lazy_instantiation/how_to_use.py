@@ -1,5 +1,4 @@
-from dynamic_cache import CachedPropertyDependencyMixin
-from dynamic_cache import dependent_cached_property
+from __init__ import NotThreadSafe
 
 
 def _make_connection(config):
@@ -7,12 +6,12 @@ def _make_connection(config):
     return f'Connection with config: {config}'
 
 
-class DatabaseClient(CachedPropertyDependencyMixin):
+class DatabaseClient(NotThreadSafe.CachedPropertyDependencyMixin):
     
     def __init__(self, config):
         self._config = config
     
-    @dependent_cached_property(depends_on=['_config'])
+    @NotThreadSafe.dependent_cached_property(depends_on=['_config'])
     def connection(self):
         return _make_connection(self._config)
 

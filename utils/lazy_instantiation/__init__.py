@@ -1,2 +1,17 @@
-from dynamic_cache import CachedPropertyDependencyMixin
-from dynamic_cache import dependent_cached_property
+from dynamic_cache import CachedPropertyDependencyMixin as _CachedPropertyDependencyMixin
+from dynamic_cache import dependent_cached_property as _dependent_cached_property
+
+from dynamic_cache_thread_safe import CachedPropertyDependencyThreadSafeMixin as _CachedPropertyDependencyThreadSafeMixin
+from dynamic_cache_thread_safe import dependent_cached_property_thread_safe as _dependent_cached_property_thread_safe
+from dynamic_cache_thread_safe import thread_safe as _thread_safe
+
+
+class NotThreadSafe:
+    CachedPropertyDependencyMixin = _CachedPropertyDependencyMixin
+    dependent_cached_property = _dependent_cached_property
+
+
+class ThreadSafe:
+    CachedPropertyDependencyThreadSafeMixin = _CachedPropertyDependencyThreadSafeMixin
+    dependent_cached_property_thread_safe = _dependent_cached_property_thread_safe
+    thread_safe_inside_method = _thread_safe

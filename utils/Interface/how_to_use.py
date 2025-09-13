@@ -19,7 +19,26 @@ class MyInterface(InterfaceBase):
         pass
 
 
-MyInterface()
+class MyConcrete(MyInterface):
+    
+    def foo(self):
+        print('foo')
+    
+    @property
+    def bar(self):
+        print('bar')
+        return 'bar'
+    
+    @staticmethod
+    def s():
+        print('s')
+
+    @classmethod
+    def c(cls):
+        print('c')
+
+
+MyConcrete()
 
 
 try:

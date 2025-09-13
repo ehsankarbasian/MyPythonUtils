@@ -96,6 +96,11 @@ def _is_empty_function(func) -> bool:
 
 class _InterfaceMeta(ABCMeta):
     
+    def __call__(cls, *args, **kwargs):
+        if issubclass(cls, InterfaceBase):
+            raise TypeError(f"Cannot instantiate interface class '{cls.__name__}'")
+        return super().__call__(*args, **kwargs)
+    
     def __new__(mcls, name, bases, namespace):
         if name == "InterfaceBase":
             return super().__new__(mcls, name, bases, namespace)

@@ -94,14 +94,13 @@ def _is_empty_function(func) -> bool:
     
     return False
 
-
 class _InterfaceMeta(ABCMeta):
-    
     def __call__(cls, *args, **kwargs):
+        # فقط اگر خودِ کلاس Interface باشه → نمونه‌سازی ممنوع
         if InterfaceBase in cls.__bases__:
             raise TypeError(f"Cannot instantiate interface class '{cls.__name__}'")
         return super().__call__(*args, **kwargs)
-    
+
     def __new__(mcls, name, bases, namespace):
         if name == "InterfaceBase":
             return super().__new__(mcls, name, bases, namespace)
@@ -109,6 +108,7 @@ class _InterfaceMeta(ABCMeta):
         is_interface = InterfaceBase in bases
 
         if is_interface:
+            interface_methods = {}
             for attr, value in list(namespace.items()):
                 if attr.startswith("__") and attr.endswith("__"):
                     continue
@@ -118,16 +118,19 @@ class _InterfaceMeta(ABCMeta):
                 if inspect.isfunction(value):
                     if not _is_empty_function(value):
                         raise TypeError(f"Method '{attr}' in interface '{name}' must have empty body.")
+                    interface_methods[attr] = "method"
                     continue
 
                 if isinstance(value, staticmethod):
                     if not _is_empty_function(value.__func__):
                         raise TypeError(f"Static method '{attr}' in interface '{name}' must have empty body.")
+                    interface_methods[attr] = "staticmethod"
                     continue
 
                 if isinstance(value, classmethod):
                     if not _is_empty_function(value.__func__):
                         raise TypeError(f"Class method '{attr}' in interface '{name}' must have empty body.")
+                    interface_methods[attr] = "classmethod"
                     continue
 
                 if isinstance(value, property):
@@ -135,6 +138,7 @@ class _InterfaceMeta(ABCMeta):
                         raise TypeError(f"Property getter '{attr}' in interface '{name}' must have empty body.")
                     if value.fset and not _is_empty_function(value.fset):
                         raise TypeError(f"Property setter '{attr}' in interface '{name}' must have empty body.")
+                    interface_methods[attr] = "property"
                     continue
 
                 if isinstance(value, type):
@@ -142,9 +146,39 @@ class _InterfaceMeta(ABCMeta):
 
                 raise TypeError(f"Attribute '{attr}' in interface '{name}' should not have a value.")
 
+            namespace["_interface_contracts_"] = interface_methods
+
+        else:
+            contracts = {}
+            for base in bases:
+                if hasattr(base, "_interface_contracts_"):
+                    contracts.update(base._interface_contracts_)
+
+            for method_name, kind in contracts.items():
+                if method_name not in namespace:
+                    raise TypeError(
+                        f"Class '{name}' must implement '{method_name}' from interface '{base.__name__}'"
+                    )
+
+                value = namespace[method_name]
+                if kind == "method" and (not inspect.isfunction(value) or _is_empty_function(value)):
+                    raise TypeError(f"Method '{method_name}' in '{name}' must implement interface method.")
+                if kind == "staticmethod" and (
+                    not isinstance(value, staticmethod) or _is_empty_function(value.__func__)
+                ):
+                    raise TypeError(f"Static method '{method_name}' in '{name}' must implement interface method.")
+                if kind == "classmethod" and (
+                    not isinstance(value, classmethod) or _is_empty_function(value.__func__)
+                ):
+                    raise TypeError(f"Class method '{method_name}' in '{name}' must implement interface method.")
+                if kind == "property":
+                    if not isinstance(value, property):
+                        raise TypeError(f"Property '{method_name}' in '{name}' must implement interface property.")
+                    if value.fget is None or _is_empty_function(value.fget):
+                        raise TypeError(f"Property getter '{method_name}' in '{name}' must implement interface.")
+        
         return super().__new__(mcls, name, bases, namespace)
 
 
 class InterfaceBase(metaclass=_InterfaceMeta):
     pass
-InterfaceBase()

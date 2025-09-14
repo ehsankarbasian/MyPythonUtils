@@ -2,10 +2,7 @@ import os
 import ast
 import inspect
 import textwrap
-
 from abc import ABCMeta
-
-# TODO: Refactor
 
 
 def _find_func_node_from_file(func):
@@ -19,7 +16,7 @@ def _find_func_node_from_file(func):
     
     with open(source_file, "r", encoding="utf-8") as f:
         src = f.read()
-    
+        
     try:
         mod = ast.parse(src)
     except SyntaxError:
@@ -37,11 +34,10 @@ def _find_func_node_from_file(func):
 def _find_func_node_from_snippet(func):
     try:
         src_snip = inspect.getsource(func)
-    except Exception:
+    except (OSError, TypeError, IOError):
         return None
     
     src_snip = textwrap.dedent(src_snip)
-    
     try:
         mod = ast.parse(src_snip)
     except SyntaxError:
@@ -50,15 +46,13 @@ def _find_func_node_from_snippet(func):
     for node in ast.walk(mod):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func.__name__:
             return node
+        
     return None
 
 
 def _get_function_ast_node(func):
-    node = _find_func_node_from_file(func)
-    if node is not None:
-        return node
-    
-    return _find_func_node_from_snippet(func)
+    return _find_func_node_from_file(func) or _find_func_node_from_snippet(func)
+
 
 def _is_ast_body_empty(node: ast.AST) -> bool:
     if not node or not hasattr(node, "body"):
@@ -82,7 +76,6 @@ def _is_empty_function(func) -> bool:
     node = _get_function_ast_node(func)
     if node is not None:
         return _is_ast_body_empty(node)
-    
     code = getattr(func, "__code__", None)
     if code is None:
         return False
@@ -94,10 +87,49 @@ def _is_empty_function(func) -> bool:
     
     return False
 
+
+def _collect_interface_contracts_from_mro(cls):
+    contracts = {}
+    for base in cls.__mro__:
+        if getattr(base, "_is_interface_", False):
+            parent_contracts = getattr(base, "_interface_contracts_", {})
+            for name, kind in parent_contracts.items():
+                contracts[name] = kind
+                
+    return contracts
+
+
+def _has_nonempty_implementation(cls, name, kind):
+    try:
+        val = inspect.getattr_static(cls, name)
+    except AttributeError:
+        return False
+
+    if kind == "property":
+        if isinstance(val, property):
+            fget = val.fget
+            return (fget is not None) and (not _is_empty_function(fget))
+        return False
+
+    if isinstance(val, staticmethod):
+        return not _is_empty_function(val.__func__)
+
+    if isinstance(val, classmethod):
+        return not _is_empty_function(val.__func__)
+
+    if inspect.isfunction(val):
+        return not _is_empty_function(val)
+
+    func = getattr(val, "__func__", None)
+    if func and hasattr(func, "__code__"):
+        return not _is_empty_function(func)
+
+    return False
+
+
 class _InterfaceMeta(ABCMeta):
     def __call__(cls, *args, **kwargs):
-        # فقط اگر خودِ کلاس Interface باشه → نمونه‌سازی ممنوع
-        if InterfaceBase in cls.__bases__:
+        if getattr(cls, "_is_interface_", False):
             raise TypeError(f"Cannot instantiate interface class '{cls.__name__}'")
         return super().__call__(*args, **kwargs)
 
@@ -105,10 +137,18 @@ class _InterfaceMeta(ABCMeta):
         if name == "InterfaceBase":
             return super().__new__(mcls, name, bases, namespace)
 
-        is_interface = InterfaceBase in bases
+        is_interface = namespace.get("__interface__", None)
+        if is_interface is None:
+            raise TypeError(f"Class '{name}' must be decorated with @interface or @concrete.")
+
+        namespace.pop("__interface__", None)
 
         if is_interface:
-            interface_methods = {}
+            contracts = {}
+            for base in bases:
+                if getattr(base, "_is_interface_", False):
+                    contracts.update(getattr(base, "_interface_contracts_", {}))
+
             for attr, value in list(namespace.items()):
                 if attr.startswith("__") and attr.endswith("__"):
                     continue
@@ -118,19 +158,19 @@ class _InterfaceMeta(ABCMeta):
                 if inspect.isfunction(value):
                     if not _is_empty_function(value):
                         raise TypeError(f"Method '{attr}' in interface '{name}' must have empty body.")
-                    interface_methods[attr] = "method"
+                    contracts[attr] = "method"
                     continue
 
                 if isinstance(value, staticmethod):
                     if not _is_empty_function(value.__func__):
                         raise TypeError(f"Static method '{attr}' in interface '{name}' must have empty body.")
-                    interface_methods[attr] = "staticmethod"
+                    contracts[attr] = "staticmethod"
                     continue
 
                 if isinstance(value, classmethod):
                     if not _is_empty_function(value.__func__):
                         raise TypeError(f"Class method '{attr}' in interface '{name}' must have empty body.")
-                    interface_methods[attr] = "classmethod"
+                    contracts[attr] = "classmethod"
                     continue
 
                 if isinstance(value, property):
@@ -138,7 +178,7 @@ class _InterfaceMeta(ABCMeta):
                         raise TypeError(f"Property getter '{attr}' in interface '{name}' must have empty body.")
                     if value.fset and not _is_empty_function(value.fset):
                         raise TypeError(f"Property setter '{attr}' in interface '{name}' must have empty body.")
-                    interface_methods[attr] = "property"
+                    contracts[attr] = "property"
                     continue
 
                 if isinstance(value, type):
@@ -146,39 +186,30 @@ class _InterfaceMeta(ABCMeta):
 
                 raise TypeError(f"Attribute '{attr}' in interface '{name}' should not have a value.")
 
-            namespace["_interface_contracts_"] = interface_methods
+            namespace["_is_interface_"] = True
+            namespace["_interface_contracts_"] = contracts
 
-        else:
-            contracts = {}
-            for base in bases:
-                if hasattr(base, "_interface_contracts_"):
-                    contracts.update(base._interface_contracts_)
+            return super().__new__(mcls, name, bases, namespace)
 
-            for method_name, kind in contracts.items():
-                if method_name not in namespace:
-                    raise TypeError(
-                        f"Class '{name}' must implement '{method_name}' from interface '{base.__name__}'"
-                    )
+        else: # Concrete
+            cls = super().__new__(mcls, name, bases, namespace)
+            total_contracts = _collect_interface_contracts_from_mro(cls)
 
-                value = namespace[method_name]
-                if kind == "method" and (not inspect.isfunction(value) or _is_empty_function(value)):
-                    raise TypeError(f"Method '{method_name}' in '{name}' must implement interface method.")
-                if kind == "staticmethod" and (
-                    not isinstance(value, staticmethod) or _is_empty_function(value.__func__)
-                ):
-                    raise TypeError(f"Static method '{method_name}' in '{name}' must implement interface method.")
-                if kind == "classmethod" and (
-                    not isinstance(value, classmethod) or _is_empty_function(value.__func__)
-                ):
-                    raise TypeError(f"Class method '{method_name}' in '{name}' must implement interface method.")
-                if kind == "property":
-                    if not isinstance(value, property):
-                        raise TypeError(f"Property '{method_name}' in '{name}' must implement interface property.")
-                    if value.fget is None or _is_empty_function(value.fget):
-                        raise TypeError(f"Property getter '{method_name}' in '{name}' must implement interface.")
-        
-        return super().__new__(mcls, name, bases, namespace)
+            missing = []
+            for method_name, kind in total_contracts.items():
+                if not _has_nonempty_implementation(cls, method_name, kind):
+                    missing.append(method_name)
+
+            if missing:
+                raise TypeError(
+                    f"Class '{name}' must implement the following members: {', '.join(missing)}"
+                )
+
+            cls._is_interface_ = False
+            cls._interface_contracts_ = {}
+            return cls
 
 
 class InterfaceBase(metaclass=_InterfaceMeta):
-    pass
+    _is_interface_ = True
+    _interface_contracts_ = {}

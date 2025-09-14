@@ -1,63 +1,32 @@
 from __init__ import InterfaceBase
+from __init__ import interface, concrete
 
 
-class MyInterface(InterfaceBase):
-    
-    def foo(self):
-        pass
-
-    @property
-    def bar(self):
-        pass
-
-    @staticmethod
-    def s():
-        ...
-
-    @classmethod
-    def c(cls):
-        pass
+@interface
+class Human(InterfaceBase):
+    def talk(self): ...
+    def walk(self): ...
 
 
-class MyConcrete(MyInterface):
-    
-    def foo(self):
-        print('foo')
-    
-    @property
-    def bar(self):
-        print('bar')
-        return 'bar'
-    
-    @staticmethod
-    def s():
-        print('s')
-
-    @classmethod
-    def c(cls):
-        print('c')
+@interface
+class MilitaryHuman(Human):
+    def shoot(self): ...
 
 
-MyConcrete()
+# try:
+#     @concrete
+#     class Soldier(MilitaryHuman):
+#         def talk(self): print("talk")
+# except TypeError as e:
+#     print("Expected error:", e)
 
 
-try:
-    class BadInterface1(InterfaceBase):
-        def foo(self):
-            print("not allowed")
-except TypeError as e:
-    print("BadInterface1:", e)
+# @concrete
+# class Commander(MilitaryHuman):
+#     def talk(self): print("talk")
+#     def walk(self): print("walk")
+#     def shoot(self): print("shoot")
 
-try:
-    class BadInterface2(InterfaceBase):
-        some_value = 123
-except TypeError as e:
-    print("BadInterface2:", e)
 
-try:
-    class BadInterface3(InterfaceBase):
-        @property
-        def baz(self):
-            return 42
-except TypeError as e:
-    print("BadInterface3:", e)
+# cmd = Commander()
+# cmd.shoot()

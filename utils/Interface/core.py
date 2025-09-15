@@ -2,7 +2,8 @@ import os
 import ast
 import inspect
 import textwrap
-from abc import ABCMeta
+
+from decorators import interface
 
 
 def _find_func_node_from_file(func):
@@ -28,6 +29,10 @@ def _find_func_node_from_file(func):
             if getattr(node, "lineno", None) == target_lineno:
                 return node
             
+    for node in ast.walk(mod):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func.__name__:
+            return node
+        
     return None
 
 
@@ -51,7 +56,11 @@ def _find_func_node_from_snippet(func):
 
 
 def _get_function_ast_node(func):
-    return _find_func_node_from_file(func) or _find_func_node_from_snippet(func)
+    node = _find_func_node_from_file(func)
+    if node is not None:
+        return node
+    
+    return _find_func_node_from_snippet(func)
 
 
 def _is_ast_body_empty(node: ast.AST) -> bool:
@@ -76,6 +85,7 @@ def _is_empty_function(func) -> bool:
     node = _get_function_ast_node(func)
     if node is not None:
         return _is_ast_body_empty(node)
+    
     code = getattr(func, "__code__", None)
     if code is None:
         return False
@@ -88,128 +98,107 @@ def _is_empty_function(func) -> bool:
     return False
 
 
-def _collect_interface_contracts_from_mro(cls):
-    contracts = {}
-    for base in cls.__mro__:
-        if getattr(base, "_is_interface_", False):
-            parent_contracts = getattr(base, "_interface_contracts_", {})
-            for name, kind in parent_contracts.items():
-                contracts[name] = kind
-                
-    return contracts
-
-
-def _has_nonempty_implementation(cls, name, kind):
-    try:
-        val = inspect.getattr_static(cls, name)
-    except AttributeError:
-        return False
-
-    if kind == "property":
-        if isinstance(val, property):
-            fget = val.fget
-            return (fget is not None) and (not _is_empty_function(fget))
-        return False
-
-    if isinstance(val, staticmethod):
-        return not _is_empty_function(val.__func__)
-
-    if isinstance(val, classmethod):
-        return not _is_empty_function(val.__func__)
-
-    if inspect.isfunction(val):
-        return not _is_empty_function(val)
-
-    func = getattr(val, "__func__", None)
-    if func and hasattr(func, "__code__"):
-        return not _is_empty_function(func)
-
-    return False
-
-
-class _InterfaceMeta(ABCMeta):
-    def __call__(cls, *args, **kwargs):
-        if getattr(cls, "_is_interface_", False):
-            raise TypeError(f"Cannot instantiate interface class '{cls.__name__}'")
-        return super().__call__(*args, **kwargs)
-
+class _InterfaceMeta(type):
     def __new__(mcls, name, bases, namespace):
-        if name == "InterfaceBase":
-            return super().__new__(mcls, name, bases, namespace)
+        cls = super().__new__(mcls, name, bases, namespace)
+        cls._is_interface_ = getattr(cls, "_is_interface_", None)
+        cls._interface_contracts_ = set()
+        return cls
 
-        is_interface = namespace.get("__interface__", None)
-        if is_interface is None:
-            raise TypeError(f"Class '{name}' must be decorated with @interface or @concrete.")
+    def __validate__(cls):
+        if cls._is_interface_ is None:
+            del cls
+            raise TypeError(
+                f"Class must be decorated with @interface or @concrete"
+            )
 
-        namespace.pop("__interface__", None)
-
-        if is_interface:
-            contracts = {}
-            for base in bases:
-                if getattr(base, "_is_interface_", False):
-                    contracts.update(getattr(base, "_interface_contracts_", {}))
-
-            for attr, value in list(namespace.items()):
+        if cls._is_interface_:
+            # enforce interface
+            for attr, value in list(vars(cls).items()):
                 if attr.startswith("__") and attr.endswith("__"):
                     continue
-                if attr == "__annotations__":
+                if attr in ("__annotations__", "_is_interface_", "_interface_contracts_"):
                     continue
 
                 if inspect.isfunction(value):
                     if not _is_empty_function(value):
-                        raise TypeError(f"Method '{attr}' in interface '{name}' must have empty body.")
-                    contracts[attr] = "method"
+                        cls_name = cls.__name__
+                        del cls
+                        raise TypeError(
+                            f"Method '{attr}' in interface '{cls_name}' must have empty body."
+                        )
+                    cls._interface_contracts_.add(attr)
                     continue
 
                 if isinstance(value, staticmethod):
                     if not _is_empty_function(value.__func__):
-                        raise TypeError(f"Static method '{attr}' in interface '{name}' must have empty body.")
-                    contracts[attr] = "staticmethod"
+                        cls_name = cls.__name__
+                        del cls
+                        raise TypeError(
+                            f"Static method '{attr}' in interface '{cls_name}' must have empty body."
+                        )
+                    cls._interface_contracts_.add(attr)
                     continue
 
                 if isinstance(value, classmethod):
                     if not _is_empty_function(value.__func__):
-                        raise TypeError(f"Class method '{attr}' in interface '{name}' must have empty body.")
-                    contracts[attr] = "classmethod"
+                        cls_name = cls.__name__
+                        del cls
+                        raise TypeError(
+                            f"Class method '{attr}' in interface '{cls_name}' must have empty body."
+                        )
+                    cls._interface_contracts_.add(attr)
                     continue
 
                 if isinstance(value, property):
                     if value.fget and not _is_empty_function(value.fget):
-                        raise TypeError(f"Property getter '{attr}' in interface '{name}' must have empty body.")
+                        cls_name = cls.__name__
+                        del cls
+                        raise TypeError(
+                            f"Property getter '{attr}' in interface '{cls_name}' must have empty body."
+                        )
                     if value.fset and not _is_empty_function(value.fset):
-                        raise TypeError(f"Property setter '{attr}' in interface '{name}' must have empty body.")
-                    contracts[attr] = "property"
+                        cls_name = cls.__name__
+                        del cls
+                        raise TypeError(
+                            f"Property setter '{attr}' in interface '{cls_name}' must have empty body."
+                        )
+                    cls._interface_contracts_.add(attr)
                     continue
-
-                if isinstance(value, type):
-                    continue
-
-                raise TypeError(f"Attribute '{attr}' in interface '{name}' should not have a value.")
-
-            namespace["_is_interface_"] = True
-            namespace["_interface_contracts_"] = contracts
-
-            return super().__new__(mcls, name, bases, namespace)
-
-        else: # Concrete
-            cls = super().__new__(mcls, name, bases, namespace)
-            total_contracts = _collect_interface_contracts_from_mro(cls)
-
-            missing = []
-            for method_name, kind in total_contracts.items():
-                if not _has_nonempty_implementation(cls, method_name, kind):
-                    missing.append(method_name)
-
-            if missing:
+                
+                cls_name = cls.__name__
+                del cls
                 raise TypeError(
-                    f"Class '{name}' must implement the following members: {', '.join(missing)}"
+                    f"Attribute '{attr}' in interface '{cls_name}' should not have a value."
                 )
 
-            cls._is_interface_ = False
-            cls._interface_contracts_ = {}
-            return cls
+
+            # inherit contracts from parents
+            for base in cls.__mro__[1:]:
+                if hasattr(base, "_interface_contracts_"):
+                    cls._interface_contracts_ |= base._interface_contracts_
+
+        else:
+            # enforce concrete
+            contracts = set()
+            for base in cls.__mro__[1:]:
+                if hasattr(base, "_interface_contracts_"):
+                    contracts |= base._interface_contracts_
+
+            missing = []
+            for contract in contracts:
+                impl = getattr(cls, contract, None)
+                if impl is None or _is_empty_function(impl):
+                    missing.append(contract)
+
+            if missing:
+                cls_name = cls.__name__
+                del cls
+                raise TypeError(
+                    f"Concrete class '{cls_name}' must implement contracts: {', '.join(missing)}"
+                )
 
 
+@interface
 class InterfaceBase(metaclass=_InterfaceMeta):
-    _is_interface_ = True
-    _interface_contracts_ = {}
+    pass

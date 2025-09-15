@@ -1,9 +1,11 @@
 
 def interface(cls):
-    cls.__interface__ = True
+    cls._is_interface_ = True
+    cls.__validate__()
     return cls
 
 
 def concrete(cls):
-    cls.__interface__ = False
+    cls._is_interface_ = False
+    cls.__validate__()
     return cls

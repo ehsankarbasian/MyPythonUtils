@@ -4,8 +4,11 @@ from __init__ import interface, concrete
 
 @interface
 class Human(InterfaceBase):
-    def talk(self): ...
+    def talk(self): pass
     def walk(self): ...
+
+
+Human()
 
 
 @interface
@@ -13,20 +16,15 @@ class MilitaryHuman(Human):
     def shoot(self): ...
 
 
-# try:
-#     @concrete
-#     class Soldier(MilitaryHuman):
-#         def talk(self): print("talk")
-# except TypeError as e:
-#     print("Expected error:", e)
+# MilitaryHuman()
 
 
-# @concrete
-# class Commander(MilitaryHuman):
-#     def talk(self): print("talk")
-#     def walk(self): print("walk")
-#     def shoot(self): print("shoot")
+@concrete
+class Commander(MilitaryHuman):
+    def talk(self): print("talking")
+    def walk(self): print("walking")
+    def shoot(self): print("shooting")
 
 
-# cmd = Commander()
-# cmd.shoot()
+c = Commander()
+c.talk()

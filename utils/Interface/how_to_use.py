@@ -1,5 +1,4 @@
-from __init__ import InterfaceBase
-from __init__ import interface, concrete
+from __init__ import InterfaceBase, interface, concrete
 
 
 @interface
@@ -8,15 +7,9 @@ class Human(InterfaceBase):
     def walk(self): ...
 
 
-Human()
-
-
 @interface
 class MilitaryHuman(Human):
     def shoot(self): ...
-
-
-# MilitaryHuman()
 
 
 @concrete
@@ -25,6 +18,9 @@ class Commander(MilitaryHuman):
     def walk(self): print("walking")
     def shoot(self): print("shooting")
 
+
+# Human()
+# MilitaryHuman()
 
 c = Commander()
 c.talk()

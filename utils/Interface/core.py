@@ -99,11 +99,19 @@ def _is_empty_function(func) -> bool:
 
 
 class _InterfaceMeta(type):
+    
     def __new__(mcls, name, bases, namespace):
         cls = super().__new__(mcls, name, bases, namespace)
         cls._is_interface_ = getattr(cls, "_is_interface_", None)
         cls._interface_contracts_ = set()
         return cls
+    
+    
+    def __call__(cls, *args, **kwargs):
+        if getattr(cls, "_is_interface_", False):
+            raise TypeError(f"Cannot instantiate interface class '{cls.__name__}'")
+        return super().__call__(*args, **kwargs)
+    
 
     def __validate__(cls):
         if cls._is_interface_ is None:
